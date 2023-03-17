@@ -18,14 +18,31 @@ const connectedUsers = {};
 
 const PORT = 8080;
 
+const rooms = {};
+const roomMessages = {};
+
 // JWT secret key
 const crypto = require('crypto');
 const secretKey = crypto.randomBytes(64).toString('hex');
 
+
+function validateUserName(username) {
+  const FORBIDDEN_NAMES = new Set(["admin", "server", "anonymous"]); // list of forbidden names
+
+  // Check if the username is not empty and does not contain forbidden characters
+  if (username && /^[a-zA-Z0-9_-]+$/.test(username)) {
+    // Check if the username is not a forbidden name
+    if (!FORBIDDEN_NAMES.has(username.toLowerCase())) {
+      return true; // username is valid
+    }
+  }
+  return false; // username is invalid
+}
+
 // Authentication middleware
 function authenticateAnonymousUser(username, password) {
   // Check if the username is not already in use and the password is empty
-  if (!connectedUsers[username] && password === '') {
+  if (!connectedUsers[username] && password === '' && validateUserName(username)) {
     return { username: username };
   } else {
     return null;
@@ -93,8 +110,6 @@ app.get('/rooms/:roomId/messages', (req, res) => {
   res.json(roomMessages[roomId]);
 });
 
-// ... (rest of your server code)
-
 // Socket.IO middleware for token authentication
 io.use((socket, next) => {
   const token = socket.handshake.query.token;
@@ -111,9 +126,6 @@ io.use((socket, next) => {
     return next(new Error('Authentication error'));
   }
 });
-
-const rooms = {};
-const roomMessages = {};
 
 io.on('connection', (socket) => {
   const { username } = socket.user;
@@ -141,6 +153,15 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     console.log(`User ${socket.user.username} joined room ${roomId}`);
   
+    const newMessage = {
+      username: "SERVER: ",
+      text: `User ${socket.user.username} joined room ${roomId}`,
+      timestamp: new Date()
+    };
+    
+    // Emit the message to all users in the room
+    io.to(roomId).emit('newMessage', newMessage);
+
     // Send the room list to the "rooms" room
     if (roomId === 'rooms') {
       socket.emit('roomList', Object.keys(rooms));
@@ -181,20 +202,20 @@ io.on('connection', (socket) => {
     
     // Disconnect event
     socket.on('disconnect', () => {
-    console.log('A user disconnected:', socket.user);
+      console.log('A user disconnected:', socket.user);
 
-    // Remove the user from all rooms
-    for (const roomId in rooms) {
-      rooms[roomId].delete(socket.user.username);
-    }
-    
-    // Remove the user from the connected users
-    delete connectedUsers[username];
+      // Remove the user from all rooms
+      for (const roomId in rooms) {
+        rooms[roomId].delete(socket.user.username);
+      }
+      
+      // Remove the user from the connected users
+      delete connectedUsers[username];
     });
   });
   
   
   // Start the server
   server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
   });
