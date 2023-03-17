@@ -126,6 +126,13 @@ io.use((socket, next) => {
     return next(new Error('Authentication error'));
   }
 });
+const playerColors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+
+function getRandomColor() {
+  return playerColors[Math.floor(Math.random() * playerColors.length)];
+}
+
+const players = {};
 
 io.on('connection', (socket) => {
   const { username } = socket.user;
@@ -141,6 +148,7 @@ io.on('connection', (socket) => {
     if (!rooms[roomId]) {
       rooms[roomId] = new Set();
       roomMessages[roomId] = [];
+      players[roomId] = {};
     }
   
     // If the user has already joined the room, do nothing
@@ -148,6 +156,14 @@ io.on('connection', (socket) => {
       return;
     }
   
+    // Add the user to the room
+    rooms[roomId].add(socket.user.username);
+    players[roomId][socket.user.username] = {
+      x: Math.random() * 800,
+      y: Math.random() * 600,
+      color: getRandomColor(),
+    };
+
     // Add the user to the room
     rooms[roomId].add(socket.user.username);
     socket.join(roomId);
@@ -166,6 +182,42 @@ io.on('connection', (socket) => {
     if (roomId === 'rooms') {
       socket.emit('roomList', Object.keys(rooms));
     }
+
+    socket.on('getPlayers', (roomId) => {
+      if (players[roomId]) {
+        socket.emit('updatePlayers', players[roomId]);
+      }
+    });
+
+    socket.on('updatePlayerPosition', (roomId, direction) => {
+      if (!rooms[roomId]) {
+        return;
+      }
+
+      const player = players[roomId][socket.user.username];
+      if (!player) {
+        return;
+      }
+
+      switch (direction) {
+        case 'up':
+          player.y -= 10;
+          break;
+        case 'down':
+          player.y += 10;
+          break;
+        case 'left':
+          player.x -= 10;
+          break;
+        case 'right':
+          player.x += 10;
+          break;
+        default:
+          break;
+      }
+
+      io.to(roomId).emit('updatePlayers', players[roomId]);
+    });
   });
   
   // Leave a room
@@ -173,7 +225,9 @@ io.on('connection', (socket) => {
     if (!rooms[roomId]) {
     return;
     }
-
+    if (players[roomId]) {
+      delete players[roomId][socket.user.username];
+    }
     // Remove the user from the room
     rooms[roomId].delete(socket.user.username);
     socket.leave(roomId);
@@ -204,18 +258,19 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
       console.log('A user disconnected:', socket.user);
 
-      // Remove the user from all rooms
-      for (const roomId in rooms) {
-        rooms[roomId].delete(socket.user.username);
-      }
-      
+              // Remove the player from all rooms
+        for (const roomId in rooms) {
+          rooms[roomId].delete(socket.user.username);
+          if (players[roomId]) {
+            delete players[roomId][socket.user.username];
+          }
+        }
       // Remove the user from the connected users
       delete connectedUsers[username];
     });
-  });
-  
-  
-  // Start the server
-  server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
+});
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
