@@ -20,7 +20,6 @@ const PORT = 8080;
 
 const rooms = {};
 const roomMessages = {};
-
 // JWT secret key
 const crypto = require('crypto');
 const secretKey = crypto.randomBytes(64).toString('hex');
@@ -142,12 +141,12 @@ io.on('connection', (socket) => {
       rooms[roomId] = new Set();
       roomMessages[roomId] = [];
     }
-  
     // If the user has already joined the room, do nothing
     if (rooms[roomId].has(socket.user.username)) {
       return;
     }
-  
+
+
     // Add the user to the room
     rooms[roomId].add(socket.user.username);
     socket.join(roomId);
@@ -168,6 +167,26 @@ io.on('connection', (socket) => {
     }
   });
   
+  // Send a message to a room
+  socket.on('sendMessage', (roomId, message) => {
+    if (!rooms[roomId]) {
+    return;
+    }
+  
+    // Add the message to the room's messages
+    const newMessage = {
+      username: socket.user.username,
+      text: message,
+      timestamp: new Date()
+    };
+    roomMessages[roomId].push(newMessage);
+    
+    // Emit the message to all users in the room
+    io.to(roomId).emit('newMessage', newMessage);
+    
+    console.log(`User ${socket.user.username} sent message to room ${roomId}: ${message}`);
+  });
+
   // Leave a room
   socket.on('leaveRoom', (roomId) => {
     if (!rooms[roomId]) {
@@ -179,26 +198,7 @@ io.on('connection', (socket) => {
     socket.leave(roomId);
     console.log(`User ${socket.user.username} left room ${roomId}`);
     });
-    
-    // Send a message to a room
-    socket.on('sendMessage', (roomId, message) => {
-      if (!rooms[roomId]) {
-      return;
-      }
-    
-      // Add the message to the room's messages
-      const newMessage = {
-        username: socket.user.username,
-        text: message,
-        timestamp: new Date()
-      };
-      roomMessages[roomId].push(newMessage);
-      
-      // Emit the message to all users in the room
-      io.to(roomId).emit('newMessage', newMessage);
-      
-      console.log(`User ${socket.user.username} sent message to room ${roomId}: ${message}`);
-    });
+
     
     // Disconnect event
     socket.on('disconnect', () => {
