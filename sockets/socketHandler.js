@@ -1,7 +1,7 @@
 // socketHandler.js
 const jwt = require("jsonwebtoken");
 const secretKey = require("../config").secretKey;
-const socketAuth = require("./socketAuth"); // Import socketAuth middleware
+const socketAuth = require("../middleware/socketAuth"); // Import socketAuth middleware
 
 module.exports = function (io, connectedUsers, rooms, roomMessages) {
   // Use the socketAuth middleware for token authentication
