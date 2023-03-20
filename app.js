@@ -15,19 +15,15 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 //
-const connectedUsers = {};
-const rooms = {};
-const roomMessages = {};
 //
 const socketHandler = require("./sockets/socketHandler");
-const roomsRoutes = require("./routes/roomsRoutes")(rooms, roomMessages);
-const authRoutes = require("./routes/authRoutes")(connectedUsers);
-
+const roomsRoutes = require("./routes/roomsRoutes")();
+const authRoutes = require("./routes/authRoutes")();
 //routing
 app.use("/rooms", roomsRoutes);
 app.use(authRoutes);
 // socketHandler
-socketHandler(io, connectedUsers, rooms, roomMessages);
+socketHandler(io);
 
 // Start the server
 server.listen(PORT, () => {
