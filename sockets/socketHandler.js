@@ -46,9 +46,14 @@ module.exports = function (io) {
       if (!rooms.getRoom(roomId)) {
         rooms.createRoom(roomId);
       }
+            // Send the room list to the "rooms" room
+            if (roomId === "rooms") {
+              socket.emit("roomList", Object.keys(rooms.getRooms()));
+            }
       // If the user has already joined the room, do nothing
       if (rooms.isUserConnected(roomId, socket.user.username)) {
         //(rooms[roomId].has(socket.user.username)) {
+          
         return;
       }
       // Add the user to the room
@@ -64,10 +69,7 @@ module.exports = function (io) {
       // Emit the message to all users in the room
       io.to(roomId).emit("newMessage", newMessage);
 
-      // Send the room list to the "rooms" room
-      if (roomId === "rooms") {
-        socket.emit("roomList", Object.keys(rooms));
-      }
+
     });
 
     // Leave a room

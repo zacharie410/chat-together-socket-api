@@ -14,6 +14,10 @@ function getRoom(roomId) {
   return rooms[roomId];
 }
 
+function getRooms() {
+  return rooms;
+}
+
 function deleteRoom(roomId) {
   if (!rooms[roomId]) {
     return false;
@@ -46,6 +50,7 @@ function disconnectUser(roomId, socket) {
 module.exports = {
   createRoom,
   getRoom,
+  getRooms,
   deleteRoom,
   connectUser,
   disconnectUser,
